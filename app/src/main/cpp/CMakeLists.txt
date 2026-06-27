@@ -11,14 +11,14 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     set(CMAKE_SHARED_LINKER_FLAGS "-Wl,--strip-all")
 endif()
 
-# ── Dobby hooking library ─────────────────────────────────────────────────
-# Dobby is an inline hooking library for ARM64
-# Download prebuilt from: https://github.com/jmpews/Dobby/releases
-# Place libdobby.a in: app/src/main/cpp/libs/arm64-v8a/
-add_library(dobby STATIC IMPORTED)
-set_target_properties(dobby PROPERTIES
-    IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/libs/arm64-v8a/libdobby.a
+# ── Dobby hooking library (Build from source) ─────────────────────────────
+include(FetchContent)
+FetchContent_Declare(
+    dobby
+    GIT_REPOSITORY https://github.com/jmpews/Dobby.git
+    GIT_TAG        main
 )
+FetchContent_MakeAvailable(dobby)
 
 # ── Our executor library ──────────────────────────────────────────────────
 add_library(
@@ -45,6 +45,7 @@ target_include_directories(rbxex PRIVATE
     ${CMAKE_SOURCE_DIR}/utils
     ${CMAKE_SOURCE_DIR}/lua
     ${CMAKE_SOURCE_DIR}/hooks
+    ${dobby_SOURCE_DIR}/include   # Dobby headers from source
 )
 
 # Link libraries
