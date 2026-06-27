@@ -1,4 +1,5 @@
 #include "luau_hook.h"
+#include "bypass.h"
 #include "../lua/executor.h"
 #include "../utils/memory.h"
 #include <jni.h>
@@ -6,27 +7,34 @@
 #include <android/log.h>
 #include <pthread.h>
 
-#define LOG_TAG "RbxEx-Main"
+#define LOG_TAG "RbxEx"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
 // ── JNI Interface ─────────────────────────────────────────────────────────
-// These functions are called from Kotlin via JNI
 
 extern "C" {
 
 /**
- * Called when our .so is loaded by Roblox (via patched AndroidManifest or JVMTI).
- * This is the entry point — install hooks here.
+ * JNI_OnLoad — called the moment our .so is loaded.
+ *
+ * ORDER IS CRITICAL:
+ *   1. Bypass::Initialize() — anti-debug, hide from maps, watchdog
+ *   2. Bypass::DelayedInit(5000) schedules hook installation after 5s
+ *      This avoids Byfron's boot-time scan window.
  */
 JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved) {
-    LOGI("RbxEx v1.0 loaded!");
-    LOGI("JNI_OnLoad called — installing hooks...");
+    LOGI("RbxEx v1.0 — initializing...");
 
-    // Install luau_execute hook
-    if (!Hooks::InstallHooks()) {
-        LOGE("Failed to install hooks! Executor will not work.");
+    // ── STEP 1: Run all bypass techniques FIRST ──────────────────────────
+    // This must happen before we touch any Roblox memory
+    if (!Bypass::Initialize()) {
+        LOGE("Bypass initialization failed — proceeding anyway");
     }
+
+    // NOTE: Hooks are installed by Bypass::DelayedInit(5000) after 5 seconds.
+    // Do NOT call Hooks::InstallHooks() directly here — that's done by the bypass
+    // module on a background thread after the safe window has passed.
 
     return JNI_VERSION_1_6;
 }

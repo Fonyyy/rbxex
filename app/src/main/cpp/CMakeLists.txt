@@ -28,8 +28,9 @@ add_library(
     # Entry point
     main.cpp
 
-    # Hooks
+    # Hooks & Bypass
     hooks/luau_hook.cpp
+    hooks/bypass.cpp
 
     # Lua executor
     lua/executor.cpp
